@@ -5,9 +5,11 @@ music_path = "C:/Abyss-heck/Paadalgal"
 app = FastAPI()
 
 @app.get("/")
-def root():
+async def root():
     song_paths = {}
+    songs = {}
     for i, song in enumerate(listdir(music_path)):
-        if i<10:
-            song_paths[i] = path.join(music_path, song)
-    return song_paths
+        # if i<10:
+            # song_paths[i] = path.join(music_path, song)
+        songs[i] = song
+    return songs
