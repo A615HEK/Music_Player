@@ -1,6 +1,6 @@
 import sys, requests, json
-from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QSplashScreen, QDialog, QSlider, QVBoxLayout, QTableWidget, QFileDialog, QTableWidgetItem, QHBoxLayout, QHeaderView, QGridLayout, QMainWindow)
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QSplashScreen, QDialog, QSlider, QVBoxLayout, QTableWidget, QFileDialog, QTableWidgetItem, QHBoxLayout, QHeaderView, QGridLayout, QMainWindow, QLineEdit)
+from PySide6.QtGui import QPixmap, QIcon, QAction
 from PySide6.QtCore import Qt, QThread, Signal, QUrl
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
@@ -62,9 +62,11 @@ class SplashScreenWindow(QSplashScreen):
 class MainScreenWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainScreenWindow, self).__init__(parent)
-        # self.getDetails()
+        self.setGeometry(100, 100, 800, 600)
         self.setWindowTitle("Music Player")
+        self.currentlyPlaying = 0
         self.musicCount = 10
+        self.windowOnline = None
         self.tableMusicDisplay = QTableWidget()
         self.tableMusicDisplay.setRowCount(self.musicCount)
         self.tableMusicDisplay.setColumnCount(4)
@@ -101,14 +103,39 @@ class MainScreenWindow(QMainWindow):
 
         self.sliderTime = QSlider()
         self.sliderTime.setOrientation(Qt.Horizontal)
-        self.sliderTime.sliderReleased.connect(self.sliderTimerReleased)
-        self.sliderTime.sliderMoved.connect(self.sliderTimerMoved)
+        self.sliderTime.sliderPressed.connect(self.sliderTimerChanged)
+        self.sliderTime.sliderReleased.connect(self.sliderTimerChanged)
+        self.sliderTime.sliderMoved.connect(self.sliderTimerChanged)
+        self.mediaPlayer.positionChanged.connect(self.sliderTimerUpdate)
+        self.mediaPlayer.mediaStatusChanged.connect(self.playNextMusic)
+
+        self.menuHome = self.menuBar().addMenu("Home")
+        self.menuYoutube = self.menuBar().addMenu("Youtube")
+
+        actionGoHome = self.menuHome.addAction("Go to Home")
+        actionGoOnline = self.menuYoutube.addAction("Search Online")
+
+        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome))
+        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline))
 
         layoutPlayer.addWidget(QLabel())
         layoutPlayer.addWidget(QLabel())
         layoutPlayer.addWidget(self.sliderTime)
         layoutPlayer.addWidget(self.buttonPlay)
         layoutVertical.addWidget(self.widgetPlayer)
+
+    def triggeredByAction(self, triggeringAction:QAction):
+        if "online" in triggeringAction.text().lower():
+            print("Search Online")
+            self.showOnlineWindow()
+        else:
+            pass
+
+    def showOnlineWindow(self):
+        if not self.windowOnline:
+            self.windowOnline = YoutubeWindow(self)
+        self.hide()
+        self.windowOnline.show()
 
     def populateTable(self, detailsForTable):
         self.detailsForTable = json.loads(detailsForTable)
@@ -118,19 +145,22 @@ class MainScreenWindow(QMainWindow):
             self.tableMusicDisplay.setRowHeight(int(i), 60)
             if i==self.musicCount-1:
                 break
+        self.selectedAudio(0, 1)
+        self.buttonPlay.click()
 
     def selectedAudio(self, row, column):
         self.buttonPlay.setChecked(False)
         self.selectedAudioID = row
         if column != 3:
             self.mediaPlayer.setSource(QUrl().fromLocalFile(self.detailsForTable[str(row)]["path"]))
+            self.currentlyPlaying = row
             self.buttonPlay.click()
         time_vals = list(map(int, map(str.strip, self.detailsForTable[str(row)]["duration"].split(":"))))
         audio_time_in_secs = 0
         if len(time_vals)>3:
             audio_time_in_secs += time_vals[0]*86400
         audio_time_in_secs += sum(val*(60**(len(time_vals)-1-idx)) for idx, val in enumerate(time_vals[-3:]))
-        self.sliderTime.setRange(0, audio_time_in_secs)
+        self.sliderTime.setRange(0, audio_time_in_secs*1000)
         self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[str(row)]["filename"])
         self.widgetPlayer.layout().itemAt(1).widget().setText(self.detailsForTable[str(row)]["duration"])
 
@@ -142,15 +172,67 @@ class MainScreenWindow(QMainWindow):
             print("Pause")
             self.mediaPlayer.pause()
 
-    def sliderTimerMoved(self):
-        print("Moved:", self.sliderTime.value())
+    def sliderTimerChanged(self):
+        self.mediaPlayer.setPosition(self.sliderTime.value())
 
-    def sliderTimerReleased(self):
-        print("Released:", self.sliderTime.value())
+    def sliderTimerUpdate(self):
+        self.sliderTime.setValue(self.mediaPlayer.position())
+
+    def playNextMusic(self):
+        if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+            if self.currentlyPlaying < self.musicCount-1:
+                self.selectedAudio(self.currentlyPlaying+1, 1)
+            else:
+                self.selectedAudio(0, 1)
+                self.buttonPlay.click()
 
     def handleError(self):
-        pass
+        print("There's been an error mate...")
 
+# -----------------------------------------------------------------
+
+class YoutubeWindow(QMainWindow):
+    def __init__(self, mainWindow:QMainWindow, parent=None):
+        super(YoutubeWindow, self).__init__(parent)
+        self.setGeometry(200, 200, 400, 200)
+        self.setWindowTitle("Music Player")
+        appIcon = QIcon("./Resources/Splash_Screen_Logo.png")
+        self.setWindowIcon(appIcon)
+
+        self.windowHome = mainWindow
+
+        self.menuHome = self.menuBar().addMenu("Home")
+        self.menuYoutube = self.menuBar().addMenu("Youtube")
+        actionGoHome = self.menuHome.addAction("Go to Home")
+        actionGoOnline = self.menuYoutube.addAction("Search Online")
+        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome))
+        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline))
+
+        widgetCentral = QWidget()
+        self.setCentralWidget(widgetCentral)
+        layoutHorizontal = QHBoxLayout()
+        widgetCentral.setLayout(layoutHorizontal)
+        self.lineEditSearch = QLineEdit("")
+        self.lineEditSearch.setPlaceholderText("Search YouTube...")
+        self.buttonSearch = QPushButton("Search")
+        self.buttonSearch.clicked.connect(self.searchSong)
+        layoutHorizontal.addWidget(self.lineEditSearch)
+        layoutHorizontal.addWidget(self.buttonSearch)
+
+    def searchSong(self):
+        # TODO:
+        # 1. Search clicked -> Disable LineEdit till search reults are back
+        print(self.lineEditSearch.text())
+
+    def triggeredByAction(self, triggeringAction:QAction):
+        if "home" in triggeringAction.text().lower():
+            print("Go to Home")
+            self.hide()
+            if self.windowHome:
+                self.windowHome.show()
+                self.destroy()
+        else:
+            pass
 # -----------------------------------------------------------------
 
 class AppWindows():
