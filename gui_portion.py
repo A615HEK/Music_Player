@@ -71,7 +71,7 @@ class MainScreenWindow(QMainWindow):
         self.tableMusicDisplay.setRowCount(self.musicCount)
         self.tableMusicDisplay.setColumnCount(4)
         self.tableMusicDisplay.setShowGrid(False)
-        self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Music Name", "Duration", "More Actions"])
+        self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Music Name", "Duration", "More Actions"]) # Only for debug
 
         for i in range(self.tableMusicDisplay.columnCount()):
             self.tableMusicDisplay.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
@@ -140,13 +140,21 @@ class MainScreenWindow(QMainWindow):
     def populateTable(self, detailsForTable):
         self.detailsForTable = json.loads(detailsForTable)
         for (i,musicDetails) in self.detailsForTable.items():
+            buttonMoreActions = QPushButton("...")
+            buttonMoreActions.setProperty("row_idx", i)
+            buttonMoreActions.clicked.connect(self.moreActionsClicked)
             self.tableMusicDisplay.setItem(int(i), 1, QTableWidgetItem(musicDetails["filename"]))
             self.tableMusicDisplay.setItem(int(i), 2, QTableWidgetItem(musicDetails["duration"]))
+            self.tableMusicDisplay.setCellWidget(int(i), 3, buttonMoreActions)
             self.tableMusicDisplay.setRowHeight(int(i), 60)
             if i==self.musicCount-1:
                 break
         self.selectedAudio(0, 1)
         self.buttonPlay.click()
+
+    def moreActionsClicked(self):
+        clicked_RowID = self.sender().property("row_idx")
+        print(self.detailsForTable[clicked_RowID]["filename"])
 
     def selectedAudio(self, row, column):
         self.buttonPlay.setChecked(False)
@@ -166,10 +174,8 @@ class MainScreenWindow(QMainWindow):
 
     def buttonPlayPause(self):
         if self.buttonPlay.isChecked():
-            print("Play")
             self.mediaPlayer.play()
         else:
-            print("Pause")
             self.mediaPlayer.pause()
 
     def sliderTimerChanged(self):
@@ -180,9 +186,9 @@ class MainScreenWindow(QMainWindow):
 
     def playNextMusic(self):
         if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
-            if self.currentlyPlaying < self.musicCount-1:
+            if self.currentlyPlaying < self.musicCount-1: # Not the last song
                 self.selectedAudio(self.currentlyPlaying+1, 1)
-            else:
+            else: # If the song that finished playing was the last song
                 self.selectedAudio(0, 1)
                 self.buttonPlay.click()
 
