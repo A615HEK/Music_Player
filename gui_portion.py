@@ -1,5 +1,5 @@
 import sys, requests, json
-from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QSplashScreen, QDialog, QSlider, QVBoxLayout, QTableWidget, QFileDialog, QTableWidgetItem, QHBoxLayout, QHeaderView, QGridLayout, QMainWindow, QLineEdit)
+from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QSplashScreen, QDialog, QSlider, QVBoxLayout, QTableWidget, QFileDialog, QTableWidgetItem, QHBoxLayout, QHeaderView, QGridLayout, QMainWindow, QLineEdit, QToolTip, QSpacerItem)
 from PySide6.QtGui import QPixmap, QIcon, QAction
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -130,9 +130,11 @@ class MainScreenWindow(QMainWindow):
 
         self.sliderTime = QSlider()
         self.sliderTime.setOrientation(Qt.Horizontal)
-        self.sliderTime.sliderPressed.connect(self.sliderTimerChanged)
-        self.sliderTime.sliderReleased.connect(self.sliderTimerChanged)
-        self.sliderTime.sliderMoved.connect(self.sliderTimerChanged)
+        self.sliderTime.sliderMoved.connect(lambda: self.sliderTimerChanged("SliderMoved"))
+        self.sliderTime.sliderPressed.connect(lambda: self.sliderTimerChanged("SliderPressed"))
+        self.sliderTime.sliderReleased.connect(lambda: self.sliderTimerChanged("SliderReleased"))
+        self.sliderTime.valueChanged.connect(self.sliderTooltipUpdate)
+        self.sliderTooltipUpdate()
         self.mediaPlayer.positionChanged.connect(self.sliderTimerUpdate)
         self.mediaPlayer.mediaStatusChanged.connect(self.playNextMusic)
 
@@ -145,10 +147,12 @@ class MainScreenWindow(QMainWindow):
         actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome))
         actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline))
 
-        layoutPlayer.addWidget(QLabel())
-        layoutPlayer.addWidget(self.sliderTime)
-        layoutPlayer.addWidget(QLabel())
-        layoutPlayer.addWidget(self.buttonPlay)
+        layoutPlayer.addWidget(QLabel()) # Name of the song/music
+        layoutPlayer.addStretch()
+        layoutPlayer.addWidget(QLabel()) # Current timestamp
+        layoutPlayer.addWidget(self.sliderTime) # Slider
+        layoutPlayer.addWidget(QLabel()) # Duration of the song/music
+        layoutPlayer.addWidget(self.buttonPlay) # Play/Pause button
         layoutVertical.addWidget(self.widgetPlayer)
 
     def triggeredByAction(self, triggeringAction:QAction):
@@ -200,7 +204,8 @@ class MainScreenWindow(QMainWindow):
         audio_time_in_secs += sum(val*(60**(len(time_vals)-1-idx)) for idx, val in enumerate(time_vals[-3:]))
         self.sliderTime.setRange(0, audio_time_in_secs*1000)
         self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[str(row)]["filename"])
-        self.widgetPlayer.layout().itemAt(2).widget().setText(self.detailsForTable[str(row)]["duration"])
+        self.widgetPlayer.layout().itemAt(2).widget().setText("0 : 00")
+        self.widgetPlayer.layout().itemAt(4).widget().setText(self.detailsForTable[str(row)]["duration"])
 
     def buttonPlayPause(self):
         if self.buttonPlay.isChecked():
@@ -210,13 +215,26 @@ class MainScreenWindow(QMainWindow):
             self.mediaPlayer.pause()
             self.buttonPlay.setText("Play")
 
-    def sliderTimerChanged(self):
+    def sliderTimerChanged(self, signalType:str):
+        if signalType == "SliderReleased" and self.buttonPlay.isChecked():
+            # Play on release only if it was initially playing
+            self.mediaPlayer.play()
+        else:
+            self.mediaPlayer.pause()
+        # Update the song to the timestamp specified by the slider's new position
         self.mediaPlayer.setPosition(self.sliderTime.value())
-        # self.sliderTime.setToolTip(Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__())
+        # Updates tooltip dynamically
+        currentTime = Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__()
+        self.sliderTime.setToolTip(currentTime)
+        cursorPos = self.cursor().pos()
+        QToolTip.showText(cursorPos, currentTime, self.sliderTime)
 
     def sliderTimerUpdate(self):
+        self.widgetPlayer.layout().itemAt(2).widget().setText(Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__())
         self.sliderTime.setValue(self.mediaPlayer.position())
-        # self.sliderTime.setToolTip(Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__())
+
+    def sliderTooltipUpdate(self):
+        self.sliderTime.setToolTip(Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__())
 
     def playNextMusic(self):
         if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:

@@ -1,16 +1,15 @@
 import re
-# exit_flag = False
 class Time_Values:
     def __init__(self, time_value:str|int = "0"):
         self.set_time(str(time_value))
-        # print(f"Self: {self.time_in_secs()}")
     def __repr__(self):
+        # The 1st number has no leading zero, rest have leading zeros if they are single digits
         if self.time_day:
-            return f"{self.time_day} : {self.time_hour} : {self.time_min} : {self.time_sec}"
+            return f"{self.time_day}" + " : " + f"{self.time_hour}".rjust(2, "0") + " : " + f"{self.time_min}".rjust(2, "0") + " : " + f"{self.time_sec}".rjust(2, "0")
         if self.time_hour:
-            return f"{self.time_hour} : {self.time_min} : {self.time_sec}"
+            return f"{self.time_hour}" + " : " + f"{self.time_min}".rjust(2, "0") + " : " + f"{self.time_sec}".rjust(2, "0")
         else:
-            return f"{self.time_min} : {self.time_sec}"
+            return f"{self.time_min}" + " : " + f"{self.time_sec}".rjust(2, "0")
     def set_time(self, time_string:str = "0"):
         self.time_val = list(map(int, re.split('[- :.]', time_string)))
         self.time_val.reverse()
@@ -69,9 +68,6 @@ class Time_Values:
             # Time correction
             self.correction_time_underflow()
             self.correction_time_overflow()
-# base_time_val = Time_Values()
-# print(base_time_val)
-# print("Time processor:\n*Operations supported for DD:HH:MM:SS or DD.HH.MM.SS")
 # while not exit_flag:
 #     # TODO: Include try catch block for wrongs
 #     op_val = int(input("What do you want to do: 1. Add\t2.Subtract:\t"))
