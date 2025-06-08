@@ -8,6 +8,14 @@ from time_Calcer import Time_Values
 
 # -----------------------------------------------------------------
 
+# TODO:
+# 1. Display list of available Playlists + New Playlist creation (within "Add to playlist" in "More Actions")
+# 2. Storing Playlists
+# 3. Click on playlists to view songs in it
+# 4. Click on play (or) on a song to start playing it instead of the current song & queue
+
+# -----------------------------------------------------------------
+
 class Worker(QThread):
     finished = Signal(str)
     error = Signal(str)
@@ -94,6 +102,7 @@ class MainScreenWindow(QMainWindow):
         self.currentlyPlaying = 0
         self.musicCount = 10
         self.windowOnline = None
+        self.windowPlaylists = None
         self.tableMusicDisplay = QTableWidget()
         self.tableMusicDisplay.setRowCount(self.musicCount)
         self.tableMusicDisplay.setColumnCount(4)
@@ -142,10 +151,12 @@ class MainScreenWindow(QMainWindow):
         self.menuYoutube = self.menuBar().addMenu("Youtube")
 
         actionGoHome = self.menuHome.addAction("Go to Home")
+        actionGoPlaylists = self.menuHome.addAction("View Playlists")
         actionGoOnline = self.menuYoutube.addAction("Search Online")
 
-        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome))
-        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline))
+        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
+        actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
+        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
 
         layoutPlayer.addWidget(QLabel()) # Name of the song/music
         layoutPlayer.addStretch()
@@ -155,12 +166,21 @@ class MainScreenWindow(QMainWindow):
         layoutPlayer.addWidget(self.buttonPlay) # Play/Pause button
         layoutVertical.addWidget(self.widgetPlayer)
 
-    def triggeredByAction(self, triggeringAction:QAction):
-        if "online" in triggeringAction.text().lower():
+    def triggeredByAction(self, triggeringActionText:str):
+        if "online" in triggeringActionText:
             print("Search Online")
             self.showOnlineWindow()
+        elif "playlist" in triggeringActionText:
+            print("Viewing Playlists")
+            self.showPlaylistsWindow()
         else:
             pass
+
+    def showPlaylistsWindow(self):
+        if not self.windowPlaylists:
+            self.windowPlaylists = PlaylistsWindow(self)
+        self.hide()
+        self.windowPlaylists.show()
 
     def showOnlineWindow(self):
         if not self.windowOnline:
@@ -249,8 +269,51 @@ class MainScreenWindow(QMainWindow):
 
 # -----------------------------------------------------------------
 
+class PlaylistsWindow(QMainWindow):
+    def __init__(self, mainWindow:QMainWindow | MainScreenWindow, parent=None):
+        super(PlaylistsWindow, self).__init__(parent)
+        self.setGeometry(200, 200, 400, 200)
+        self.setWindowTitle("Music Player")
+        appIcon = QIcon("./Resources/Splash_Screen_Logo.png")
+        self.setWindowIcon(appIcon)
+
+        self.windowHome = mainWindow
+
+        self.menuHome = self.menuBar().addMenu("Home")
+        self.menuYoutube = self.menuBar().addMenu("Youtube")
+        actionGoHome = self.menuHome.addAction("Go to Home")
+        actionGoPlaylists = self.menuHome.addAction("View Playlists")
+        actionGoOnline = self.menuYoutube.addAction("Search Online")
+        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
+        actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
+        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
+
+        widgetCentral = QWidget()
+        self.setCentralWidget(widgetCentral)
+        layoutHorizontal = QHBoxLayout()
+        widgetCentral.setLayout(layoutHorizontal)
+        self.buttonSearch = QPushButton("Default Playlist 1")
+        layoutHorizontal.addWidget(self.buttonSearch)
+
+    def triggeredByAction(self, triggeringActionText:str):
+        if "home" in triggeringActionText:
+            print("Go to Home")
+            self.hide()
+            if self.windowHome:
+                self.windowHome.show()
+                self.destroy()
+        elif "online" in triggeringActionText:
+            print("Search Online")
+            self.hide()
+            self.windowHome.showOnlineWindow()
+            self.destroy()
+        else:
+            pass
+
+# -----------------------------------------------------------------
+
 class YoutubeWindow(QMainWindow):
-    def __init__(self, mainWindow:QMainWindow, parent=None):
+    def __init__(self, mainWindow:QMainWindow | MainScreenWindow, parent=None):
         super(YoutubeWindow, self).__init__(parent)
         self.setGeometry(200, 200, 400, 200)
         self.setWindowTitle("Music Player")
@@ -262,9 +325,11 @@ class YoutubeWindow(QMainWindow):
         self.menuHome = self.menuBar().addMenu("Home")
         self.menuYoutube = self.menuBar().addMenu("Youtube")
         actionGoHome = self.menuHome.addAction("Go to Home")
+        actionGoPlaylists = self.menuHome.addAction("View Playlists")
         actionGoOnline = self.menuYoutube.addAction("Search Online")
-        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome))
-        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline))
+        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
+        actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
+        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
 
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
@@ -282,15 +347,21 @@ class YoutubeWindow(QMainWindow):
         # 1. Search clicked -> Disable LineEdit till search reults are back
         print(self.lineEditSearch.text())
 
-    def triggeredByAction(self, triggeringAction:QAction):
-        if "home" in triggeringAction.text().lower():
+    def triggeredByAction(self, triggeringActionText:str):
+        if "home" in triggeringActionText:
             print("Go to Home")
             self.hide()
             if self.windowHome:
                 self.windowHome.show()
                 self.destroy()
+        elif "playlist" in triggeringActionText:
+            print("Viewing Playlists")
+            self.hide()
+            self.windowHome.showPlaylistsWindow()
+            self.destroy()
         else:
             pass
+
 # -----------------------------------------------------------------
 
 class AppWindows():
