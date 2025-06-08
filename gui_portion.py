@@ -1,9 +1,10 @@
 import sys, requests, json
 from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QPushButton, QSplashScreen, QDialog, QSlider, QVBoxLayout, QTableWidget, QFileDialog, QTableWidgetItem, QHBoxLayout, QHeaderView, QGridLayout, QMainWindow, QLineEdit)
 from PySide6.QtGui import QPixmap, QIcon, QAction
-from PySide6.QtCore import Qt, QThread, Signal, QUrl
+from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
+from time_Calcer import Time_Values
 
 # -----------------------------------------------------------------
 
@@ -59,6 +60,32 @@ class SplashScreenWindow(QSplashScreen):
 
 # -----------------------------------------------------------------
 
+class MoreOptionsPopup(QWidget):
+    def __init__(self, songName:str, parent=None):
+        super(MoreOptionsPopup, self).__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+        self.layoutVertical = QVBoxLayout()
+        self.setLayout(self.layoutVertical)
+        self.buttonMA_AddToPlaylist = QPushButton("Add To Playlist")
+        self.buttonMA_AddToQueue = QPushButton("Add To Queue")
+        # self.buttonMA_EditTags = QPushButton("Edit Tags")
+        # self.buttonMA_AddToFav = QPushButton("Add To Favourites")
+        self.layoutVertical.addWidget(self.buttonMA_AddToPlaylist)
+        self.layoutVertical.addWidget(self.buttonMA_AddToQueue)
+        self.buttonMA_AddToPlaylist.clicked.connect(lambda: self.AddToPlaylist(songName, "Default_Playlist"))
+        self.buttonMA_AddToQueue.clicked.connect(lambda: self.AddToPlaylist(songName))
+
+    def AddToPlaylist(self, songName:str, playlistName:str = "Queue"):
+        print(f"Add to {playlistName} -> {songName}")
+        self.close()
+
+    def displayPopup(self, parentPos:QPoint):
+        self.move(parentPos)
+        self.show()
+
+# -----------------------------------------------------------------
+
 class MainScreenWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainScreenWindow, self).__init__(parent)
@@ -71,7 +98,7 @@ class MainScreenWindow(QMainWindow):
         self.tableMusicDisplay.setRowCount(self.musicCount)
         self.tableMusicDisplay.setColumnCount(4)
         self.tableMusicDisplay.setShowGrid(False)
-        self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Music Name", "Duration", "More Actions"])
+        self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Music Name", "Duration", "More Actions"]) # Only for debug
 
         for i in range(self.tableMusicDisplay.columnCount()):
             self.tableMusicDisplay.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
@@ -97,7 +124,7 @@ class MainScreenWindow(QMainWindow):
         layoutPlayer = QHBoxLayout()
         self.widgetPlayer.setLayout(layoutPlayer)
 
-        self.buttonPlay = QPushButton("Play/Pause")
+        self.buttonPlay = QPushButton("Play")
         self.buttonPlay.setCheckable(True)
         self.buttonPlay.clicked.connect(self.buttonPlayPause)
 
@@ -119,8 +146,8 @@ class MainScreenWindow(QMainWindow):
         actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline))
 
         layoutPlayer.addWidget(QLabel())
-        layoutPlayer.addWidget(QLabel())
         layoutPlayer.addWidget(self.sliderTime)
+        layoutPlayer.addWidget(QLabel())
         layoutPlayer.addWidget(self.buttonPlay)
         layoutVertical.addWidget(self.widgetPlayer)
 
@@ -140,13 +167,24 @@ class MainScreenWindow(QMainWindow):
     def populateTable(self, detailsForTable):
         self.detailsForTable = json.loads(detailsForTable)
         for (i,musicDetails) in self.detailsForTable.items():
+            buttonMoreActions = QPushButton("...")
+            buttonMoreActions.setProperty("row_idx", i)
+            buttonMoreActions.clicked.connect(self.moreActionsClicked)
             self.tableMusicDisplay.setItem(int(i), 1, QTableWidgetItem(musicDetails["filename"]))
             self.tableMusicDisplay.setItem(int(i), 2, QTableWidgetItem(musicDetails["duration"]))
+            self.tableMusicDisplay.setCellWidget(int(i), 3, buttonMoreActions)
             self.tableMusicDisplay.setRowHeight(int(i), 60)
             if i==self.musicCount-1:
                 break
         self.selectedAudio(0, 1)
         self.buttonPlay.click()
+
+    def moreActionsClicked(self):
+        clicked_RowID = self.sender().property("row_idx")
+        songName = self.detailsForTable[clicked_RowID]["filename"]
+        MA_Popup = MoreOptionsPopup(songName)
+        MA_Pos = self.sender().mapToGlobal(QPoint(0, self.sender().height()))
+        MA_Popup.displayPopup(MA_Pos)
 
     def selectedAudio(self, row, column):
         self.buttonPlay.setChecked(False)
@@ -162,27 +200,29 @@ class MainScreenWindow(QMainWindow):
         audio_time_in_secs += sum(val*(60**(len(time_vals)-1-idx)) for idx, val in enumerate(time_vals[-3:]))
         self.sliderTime.setRange(0, audio_time_in_secs*1000)
         self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[str(row)]["filename"])
-        self.widgetPlayer.layout().itemAt(1).widget().setText(self.detailsForTable[str(row)]["duration"])
+        self.widgetPlayer.layout().itemAt(2).widget().setText(self.detailsForTable[str(row)]["duration"])
 
     def buttonPlayPause(self):
         if self.buttonPlay.isChecked():
-            print("Play")
             self.mediaPlayer.play()
+            self.buttonPlay.setText("Pause")
         else:
-            print("Pause")
             self.mediaPlayer.pause()
+            self.buttonPlay.setText("Play")
 
     def sliderTimerChanged(self):
         self.mediaPlayer.setPosition(self.sliderTime.value())
+        # self.sliderTime.setToolTip(Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__())
 
     def sliderTimerUpdate(self):
         self.sliderTime.setValue(self.mediaPlayer.position())
+        # self.sliderTime.setToolTip(Time_Values((self.sliderTime.value()/1000).__floor__()).__repr__())
 
     def playNextMusic(self):
         if self.mediaPlayer.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
-            if self.currentlyPlaying < self.musicCount-1:
+            if self.currentlyPlaying < self.musicCount-1: # Not the last song
                 self.selectedAudio(self.currentlyPlaying+1, 1)
-            else:
+            else: # If the song that finished playing was the last song
                 self.selectedAudio(0, 1)
                 self.buttonPlay.click()
 
