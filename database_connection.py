@@ -8,18 +8,13 @@ load_dotenv()
 databaseConnection = dbConn.connect(host=getenv("MYSQL_HOST"), user=getenv("MYSQL_USER"), password=getenv("MYSQL_PASSWORD"), database=getenv("MYSQL_DATABASE"))
 myCursor = databaseConnection.cursor()
 
-# # myCursor.execute("SELECT fullName FROM users WHERE userName = %s AND userPwd = %s", (enteredUserName, enteredPassword))
-print(list(myCursor))
-
 def initPlaylistsDB():
+    """Initialize the DB for playlists and songs"""
+    # TODO: Only if this is the first time in the device
     global myCursor
     myCursor.execute("CREATE DATABASE musicPlayerDB")
     myCursor.execute("CREATE TABLE playlists_DB(playlistName VARCHAR(255) PRIMARY KEY, createdOn DATE)")
-
-def initSongsDB():
-    global myCursor
     myCursor.execute("CREATE TABLE songs_DB(songName VARCHAR(255), playlistName VARCHAR(255) PRIMARY KEY, addedOn DATE)")
-    return
 
 def getAllPlaylists():
     """Returns the names of all playlists"""
@@ -30,20 +25,23 @@ def getAllPlaylists():
 def getPlaylist(playlistName:str):
     """Returns all songs in the playlist specified"""
     global myCursor
-
-    return
+    myCursor.execute("SELECT * FROM songs_DB WHERE playlistName = %s", (playlistName,))
+    return list(myCursor)
 
 def addPlaylist(playlistName:str):
     global myCursor
     global databaseConnection
     if playlistName:
-        # db_name = "playlists_DB"
         # TODO:
         # 1. Add playlist photo
         queriesToExecute = ("INSERT INTO playlists_DB (playlistName, createdOn) VALUES (%s, CURRENT_DATE)")
         myCursor.execute(queriesToExecute, (playlistName,))
         databaseConnection.commit()
         print(f"Created new playlist {playlistName}...")
+        return
+    else:
+        print("Enter a valid DB Name")
+        return
 
 # def getUser(enteredUserName: str, enteredPassword: str) -> str:
 #     global myCursor
