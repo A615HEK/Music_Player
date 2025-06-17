@@ -13,22 +13,23 @@ def initPlaylistsDB():
     # TODO: Only if this is the first time in the device
     global myCursor
     myCursor.execute("CREATE DATABASE musicPlayerDB")
-    myCursor.execute("CREATE TABLE playlists_DB(playlistName VARCHAR(255) PRIMARY KEY, createdOn DATE)")
     myCursor.execute("CREATE TABLE songs_DB(songName VARCHAR(255), playlistName VARCHAR(255) PRIMARY KEY, addedOn DATE)")
 
 def getAllPlaylists():
     """Returns the names of all playlists"""
     global myCursor
-    myCursor.execute("SELECT * FROM playlists_DB")
+    myCursor.execute("SELECT playlist_name FROM songs_DB GROUP BY playlist_name HAVING COUNT(playlist_name) = 1")
     return list(myCursor)
 
-def getPlaylist(playlistName:str):
-    """Returns all songs in the playlist specified"""
-    global myCursor
-    myCursor.execute("SELECT * FROM songs_DB WHERE playlistName = %s", (playlistName,))
-    return list(myCursor)
+# def getPlaylist(playlistName:str):
+#     """Returns all songs in the playlist specified"""
+#     global myCursor
+#     myCursor.execute("SELECT * FROM songs_DB WHERE playlistName = %s", (playlistName,))
+#     return list(myCursor)
 
 def addPlaylist(playlistName:str):
+    # Only a song can be added to a playlist
+    # You can't create a playlist and then add songs to it
     global myCursor
     global databaseConnection
     if playlistName:
