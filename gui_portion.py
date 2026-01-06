@@ -13,6 +13,7 @@ from time_Calcer import Time_Values
 # 2. Storing Playlists
 # 3. Click on playlists to view songs in it
 # 4. Click on play (or) on a song to start playing it instead of the current song & queue
+# 5. Add search bar
 
 # -----------------------------------------------------------------
 
@@ -190,6 +191,7 @@ class MainScreenWindow(QMainWindow):
 
     def populateTable(self, detailsForTable):
         self.detailsForTable = json.loads(detailsForTable)
+        self.tableMusicDisplay.setRowCount(len(self.detailsForTable)) # Dynamically update based on table size
         for (i,musicDetails) in self.detailsForTable.items():
             buttonMoreActions = QPushButton("...")
             buttonMoreActions.setProperty("row_idx", i)
