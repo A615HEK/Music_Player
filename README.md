@@ -1,0 +1,2 @@
+# Motivation
+This is a passion project of mine. Not done to showcase my brilliance. There's loads of much better music players out there. This project was undertaken to help me learn the basics of building a structured app. I have wanted to build a music player for myself. This is the reason for such an endeavour.

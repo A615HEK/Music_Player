@@ -150,6 +150,7 @@ class MainScreenWindow(QMainWindow):
 
         self.menuHome = self.menuBar().addMenu("Home")
         self.menuYoutube = self.menuBar().addMenu("Youtube")
+        self.menuSearchBar = self.menuBar().addMenu("Search")
 
         actionGoHome = self.menuHome.addAction("Go to Home")
         actionGoPlaylists = self.menuHome.addAction("View Playlists")
@@ -191,7 +192,8 @@ class MainScreenWindow(QMainWindow):
 
     def populateTable(self, detailsForTable):
         self.detailsForTable = json.loads(detailsForTable)
-        self.tableMusicDisplay.setRowCount(len(self.detailsForTable)) # Dynamically update based on table size
+        self.musicCount = len(self.detailsForTable)
+        self.tableMusicDisplay.setRowCount(self.musicCount) # Dynamically update based on table size
         for (i,musicDetails) in self.detailsForTable.items():
             buttonMoreActions = QPushButton("...")
             buttonMoreActions.setProperty("row_idx", i)
@@ -383,9 +385,9 @@ class AppWindows():
     def getDetails(self):
         url = "http://127.0.0.1:8000/"
         self.worker = Worker(url, "GET")
+        self.worker.start()
         self.worker.finished.connect(self.windowMainScreen.populateTable)
         self.worker.error.connect(self.windowMainScreen.handleError)
-        self.worker.start()
 
 # -----------------------------------------------------------------
 
