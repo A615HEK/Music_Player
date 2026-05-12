@@ -119,11 +119,26 @@ class MainScreenWindow(QMainWindow):
         self.audioOutput = QAudioOutput()
         self.mediaPlayer.setAudioOutput(self.audioOutput)
 
+        # Local library Song Search
+        search_HorizontalLayout = QHBoxLayout()
+        self.searchBar = QLineEdit()
+        self.searchBar.setPlaceholderText("Search")
+        self.searchBar.setClearButtonEnabled(True)
+        self.searchBarVisibility = False
+        self.searchBar.setVisible(self.searchBarVisibility)
+        # TODO:
+        # 1. Validate searchBar is not null before search logic is implemented
+        self.searchBar.returnPressed.connect(self.searchCurrentLibrary)
+        self.searchButton = QPushButton("Search")
+        self.searchButton.clicked.connect(self.searchCurrentLibrary)
+
+        search_HorizontalLayout.addWidget(self.searchBar)
+        search_HorizontalLayout.addWidget(self.searchButton)
+
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
         layoutVertical = QVBoxLayout()
         widgetCentral.setLayout(layoutVertical)
-        layoutVertical.addWidget(self.tableMusicDisplay)
 
         appIcon = QIcon("./Resources/Splash_Screen_Logo.png")
         self.setWindowIcon(appIcon)
@@ -150,7 +165,6 @@ class MainScreenWindow(QMainWindow):
 
         self.menuHome = self.menuBar().addMenu("Home")
         self.menuYoutube = self.menuBar().addMenu("Youtube")
-        self.menuSearchBar = self.menuBar().addMenu("Search")
 
         actionGoHome = self.menuHome.addAction("Go to Home")
         actionGoPlaylists = self.menuHome.addAction("View Playlists")
@@ -166,6 +180,9 @@ class MainScreenWindow(QMainWindow):
         layoutPlayer.addWidget(self.sliderTime) # Slider
         layoutPlayer.addWidget(QLabel()) # Duration of the song/music
         layoutPlayer.addWidget(self.buttonPlay) # Play/Pause button
+
+        layoutVertical.addLayout(search_HorizontalLayout)
+        layoutVertical.addWidget(self.tableMusicDisplay)
         layoutVertical.addWidget(self.widgetPlayer)
 
     def triggeredByAction(self, triggeringActionText:str):
@@ -176,6 +193,22 @@ class MainScreenWindow(QMainWindow):
             print("Viewing Playlists")
             self.showPlaylistsWindow()
         else:
+            pass
+
+    def searchCurrentLibrary(self):
+        # TODO:
+        # 1. Implement search logic
+        if self.searchBarVisibility and not self.searchBar.text().isspace():
+            print(f"Searching for song {self.searchBar.text()}...")
+            self.searchBarVisibility = False
+            self.searchBar.setVisible(self.searchBarVisibility)
+            self.searchBar.clear()
+        elif not self.searchBarVisibility:
+            self.searchBarVisibility = True
+            self.searchBar.setVisible(self.searchBarVisibility)
+        else:
+            # Search bar is already visible, but has no text to search for
+            # Do nothing
             pass
 
     def showPlaylistsWindow(self):
@@ -372,13 +405,13 @@ class AppWindows():
     def __init__(self):
         super(AppWindows, self).__init__()
         self.app = QApplication(sys.argv)
-        self.windowSplashScreen = SplashScreenWindow()
+        # self.windowSplashScreen = SplashScreenWindow() # ---Undo Comment---
         self.windowMainScreen = MainScreenWindow()
         self.getDetails()
-        self.windowSplashScreen.delayForSometime(0.1)
+        # self.windowSplashScreen.delayForSometime(0.1) # ---Undo Comment---
         self.windowMainScreen.show()
-        self.windowSplashScreen.finish(self.windowMainScreen)
-        del self.windowSplashScreen
+        # self.windowSplashScreen.finish(self.windowMainScreen) #---Undo Comment---
+        # del self.windowSplashScreen #---Undo Comment---
         # self.app.setStyleSheet(Path("./Resources/styleSheet.qss").read_text())
         sys.exit(self.app.exec())
 
