@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
 from time_Calcer import Time_Values
+from backend_logic import youtube_search_logic
 
 # -----------------------------------------------------------------
 
@@ -12,8 +13,26 @@ from time_Calcer import Time_Values
 # 1. Display list of available Playlists + New Playlist creation (within "Add to playlist" in "More Actions")
 # 2. Storing Playlists
 # 3. Click on playlists to view songs in it
-# 4. Click on play (or) on a song to start playing it instead of the current song & queue
-# 5. Add search bar
+# 4. Click on play (or) on a song to start playing it instead of the current song & queue # Sort of done
+
+# -----------------------------------------------------------------
+
+def commonSearchBarAssets(placeHolderText:str, searchLogic, searchBarVisibility:bool = False) -> tuple[QHBoxLayout, bool]:
+    # TODO:
+    # 1. Replace searchButton's text with Search image
+    search_HorizontalLayout = QHBoxLayout()
+    searchBar = QLineEdit()
+    searchBar.setPlaceholderText(placeHolderText)
+    searchBar.setClearButtonEnabled(True)
+    searchBar.setVisible(searchBarVisibility)
+    searchBar.returnPressed.connect(searchLogic)
+    searchButton = QPushButton("Search")
+    searchButton.clicked.connect(searchLogic)
+
+    search_HorizontalLayout.addWidget(searchBar)
+    search_HorizontalLayout.addWidget(searchButton)
+
+    return search_HorizontalLayout, searchBarVisibility
 
 # -----------------------------------------------------------------
 
@@ -120,20 +139,7 @@ class MainScreenWindow(QMainWindow):
         self.mediaPlayer.setAudioOutput(self.audioOutput)
 
         # Local library Song Search
-        search_HorizontalLayout = QHBoxLayout()
-        self.searchBar = QLineEdit()
-        self.searchBar.setPlaceholderText("Search")
-        self.searchBar.setClearButtonEnabled(True)
-        self.searchBarVisibility = False
-        self.searchBar.setVisible(self.searchBarVisibility)
-        # TODO:
-        # 1. Validate searchBar is not null before search logic is implemented
-        self.searchBar.returnPressed.connect(self.searchCurrentLibrary)
-        self.searchButton = QPushButton("Search")
-        self.searchButton.clicked.connect(self.searchCurrentLibrary)
-
-        search_HorizontalLayout.addWidget(self.searchBar)
-        search_HorizontalLayout.addWidget(self.searchButton)
+        self.search_HorizontalLayout, self.searchBarVisibility = commonSearchBarAssets("Search", self.searchCurrentLibrary)
 
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
@@ -181,7 +187,7 @@ class MainScreenWindow(QMainWindow):
         layoutPlayer.addWidget(QLabel()) # Duration of the song/music
         layoutPlayer.addWidget(self.buttonPlay) # Play/Pause button
 
-        layoutVertical.addLayout(search_HorizontalLayout)
+        layoutVertical.addLayout(self.search_HorizontalLayout)
         layoutVertical.addWidget(self.tableMusicDisplay)
         layoutVertical.addWidget(self.widgetPlayer)
 
@@ -198,16 +204,19 @@ class MainScreenWindow(QMainWindow):
     def searchCurrentLibrary(self):
         # TODO:
         # 1. Implement search logic
-        if self.searchBarVisibility and not self.searchBar.text().isspace():
-            print(f"Searching for song {self.searchBar.text()}...")
+        # Make sure you don't search for empty strings
+        # Not an empty string AND Not a string with spaces/tabs
+        searchString : str = self.search_HorizontalLayout.itemAt(0).widget().text()
+        if self.searchBarVisibility and searchString and not searchString.isspace():
+            print(f"Searching for song {searchString} ...")
             self.searchBarVisibility = False
-            self.searchBar.setVisible(self.searchBarVisibility)
-            self.searchBar.clear()
+            self.search_HorizontalLayout.itemAt(0).widget().setVisible(self.searchBarVisibility)
+            self.search_HorizontalLayout.itemAt(0).widget().clear()
         elif not self.searchBarVisibility:
             self.searchBarVisibility = True
-            self.searchBar.setVisible(self.searchBarVisibility)
+            self.search_HorizontalLayout.itemAt(0).widget().setVisible(self.searchBarVisibility)
         else:
-            # Search bar is already visible, but has no text to search for
+            # Search bar is already visible, but has no text to search for so
             # Do nothing
             pass
 
@@ -370,19 +379,19 @@ class YoutubeWindow(QMainWindow):
 
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
-        layoutHorizontal = QHBoxLayout()
-        widgetCentral.setLayout(layoutHorizontal)
-        self.lineEditSearch = QLineEdit("")
-        self.lineEditSearch.setPlaceholderText("Search YouTube...")
-        self.buttonSearch = QPushButton("Search")
-        self.buttonSearch.clicked.connect(self.searchSong)
-        layoutHorizontal.addWidget(self.lineEditSearch)
-        layoutHorizontal.addWidget(self.buttonSearch)
+        # YouTube Song Search
+        self.search_HorizontalLayout, _ = commonSearchBarAssets("Search YouTube...", self.searchSong, True)
+        widgetCentral.setLayout(self.search_HorizontalLayout)
 
     def searchSong(self):
         # TODO:
-        # 1. Search clicked -> Disable LineEdit till search reults are back
-        print(self.lineEditSearch.text())
+        # 1. Enable searchLineEdit when in focus and disable when search is clicked
+        searchString : str = self.search_HorizontalLayout.itemAt(0).widget().text()
+        if searchString and not searchString.isspace():
+            print(f"Searching for song {searchString} ...")
+            responseDict = youtube_search_logic(searchString)
+            searchResultsTitle = [item["snippet"]["title"] for item in responseDict["items"]]
+            print(searchResultsTitle)
 
     def triggeredByAction(self, triggeringActionText:str):
         if "home" in triggeringActionText:
