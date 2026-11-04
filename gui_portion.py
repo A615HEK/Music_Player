@@ -8,12 +8,14 @@ from time_Calcer import Time_Values
 from backend_logic import youtube_search_logic
 
 # -----------------------------------------------------------------
-
+# * -> Meaning Priority
 # TODO:
 # 1. Display list of available Playlists + New Playlist creation (within "Add to playlist" in "More Actions")
 # 2. Storing Playlists
 # 3. Click on playlists to view songs in it
 # 4. Click on play (or) on a song to start playing it instead of the current song & queue # Sort of done
+# 5. Toggle Always on top
+# * Ability to view queue and add songs to queue
 
 # -----------------------------------------------------------------
 
@@ -33,6 +35,29 @@ def commonSearchBarAssets(placeHolderText:str, searchLogic, searchBarVisibility:
     search_HorizontalLayout.addWidget(searchButton)
 
     return search_HorizontalLayout, searchBarVisibility
+
+def commonMenubarAssets(self:QMainWindow):
+    self.menuHome = self.menuBar().addMenu("Home")
+    self.menuYoutube = self.menuBar().addMenu("Youtube")
+    self.menuOptions = self.menuBar().addMenu("Options")
+
+    actionGoHome = self.menuHome.addAction("Go to Home")
+    actionGoPlaylists = self.menuHome.addAction("View Playlists")
+    actionGoOnline = self.menuYoutube.addAction("Search Online")
+    actionToggleOnTop = self.menuOptions.addAction("Toggle Anchor")
+
+    actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
+    actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
+    actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
+    actionToggleOnTop.triggered.connect(lambda: windowOnTopFlagToggler(self))
+
+def windowOnTopFlagToggler(self:QMainWindow):
+    import ctypes
+    import ctypes.wintypes
+    self.windowOnTopFlag = not self.windowOnTopFlag
+    hwnd = int(self.winId())
+    hwnd_insert = ctypes.wintypes.HWND(-1 if self.windowOnTopFlag else -2)
+    ctypes.windll.user32.SetWindowPos(hwnd, hwnd_insert, 0, 0, 0, 0, 3)
 
 # -----------------------------------------------------------------
 
@@ -118,6 +143,8 @@ class MainScreenWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainScreenWindow, self).__init__(parent)
         self.setGeometry(100, 100, 800, 600)
+        self.windowOnTopFlag = True
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.windowOnTopFlag) # Set to stay on top
         self.setWindowTitle("Music Player")
         self.currentlyPlaying = 0
         self.musicCount = 10
@@ -169,27 +196,48 @@ class MainScreenWindow(QMainWindow):
         self.mediaPlayer.positionChanged.connect(self.sliderTimerUpdate)
         self.mediaPlayer.mediaStatusChanged.connect(self.playNextMusic)
 
-        self.menuHome = self.menuBar().addMenu("Home")
-        self.menuYoutube = self.menuBar().addMenu("Youtube")
+        commonMenubarAssets(self) # Standardised Menubar assets
 
-        actionGoHome = self.menuHome.addAction("Go to Home")
-        actionGoPlaylists = self.menuHome.addAction("View Playlists")
-        actionGoOnline = self.menuYoutube.addAction("Search Online")
-
-        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
-        actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
-        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
+        self.volumeButton = QPushButton("Volume")
+        self.volumeButton.clicked.connect(self.displayVolumeSlider)
 
         layoutPlayer.addWidget(QLabel()) # Name of the song/music
-        layoutPlayer.addStretch()
+        # layoutPlayer.addStretch()
+        layoutPlayer.addWidget(self.volumeButton) # Volume control Button (Hidden - Volume control Slider )
         layoutPlayer.addWidget(QLabel()) # Current timestamp
-        layoutPlayer.addWidget(self.sliderTime) # Slider
+        layoutPlayer.addWidget(self.sliderTime) # Time control Slider
         layoutPlayer.addWidget(QLabel()) # Duration of the song/music
         layoutPlayer.addWidget(self.buttonPlay) # Play/Pause button
 
         layoutVertical.addLayout(self.search_HorizontalLayout)
         layoutVertical.addWidget(self.tableMusicDisplay)
         layoutVertical.addWidget(self.widgetPlayer)
+
+        # --- Volume Slider ---
+        self.volumeSlider = QSlider()
+        self.volumeSlider.setOrientation(Qt.Horizontal)
+        self.volumeSlider.setMinimum(0)
+        self.volumeSlider.setMaximum(100)
+        self.volumeSlider.setSliderPosition(100) # Default value
+        self.volumeSlider.sliderMoved.connect(self.extraVolumeControl)
+        self.volumeSlider.sliderReleased.connect(self.extraVolumeControl)
+        self.volumeSlider.sliderPressed.connect(self.extraVolumeControl)
+        self.volumeSlider.valueChanged.connect(self.extraVolumeControl)
+
+        self.volumeSliderWidget = QWidget()
+        self.volumeSliderWidget.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        volumeSliderWidget_layoutVertical = QVBoxLayout()
+        self.volumeSliderWidget.setLayout(volumeSliderWidget_layoutVertical)
+        volumeSliderWidget_layoutVertical.addWidget(self.volumeSlider)
+        self.volumeSliderWidget.setVisible(False)
+
+    def displayVolumeSlider(self):
+        if self.volumeSliderWidget.isVisible():
+            self.volumeSliderWidget.setVisible(False)
+        else:
+            parentPos = self.volumeButton.mapToGlobal(QPoint(0, -(self.volumeButton.height()+self.volumeSlider.height())))
+            self.volumeSliderWidget.move(parentPos)
+            self.volumeSliderWidget.setVisible(True)
 
     def triggeredByAction(self, triggeringActionText:str):
         if "online" in triggeringActionText:
@@ -200,6 +248,11 @@ class MainScreenWindow(QMainWindow):
             self.showPlaylistsWindow()
         else:
             pass
+
+    def extraVolumeControl(self):
+        # Function to control audio volume for extra finesse
+        changedMultiplier = self.volumeSlider.value()/100
+        self.audioOutput.setVolume(changedMultiplier)
 
     def searchCurrentLibrary(self):
         # TODO:
@@ -319,20 +372,15 @@ class PlaylistsWindow(QMainWindow):
     def __init__(self, mainWindow:QMainWindow | MainScreenWindow, parent=None):
         super(PlaylistsWindow, self).__init__(parent)
         self.setGeometry(200, 200, 400, 200)
+        self.windowOnTopFlag = True
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.windowOnTopFlag) # Set to stay on top
         self.setWindowTitle("Music Player")
         appIcon = QIcon("./Resources/Splash_Screen_Logo.png")
         self.setWindowIcon(appIcon)
 
         self.windowHome = mainWindow
 
-        self.menuHome = self.menuBar().addMenu("Home")
-        self.menuYoutube = self.menuBar().addMenu("Youtube")
-        actionGoHome = self.menuHome.addAction("Go to Home")
-        actionGoPlaylists = self.menuHome.addAction("View Playlists")
-        actionGoOnline = self.menuYoutube.addAction("Search Online")
-        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
-        actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
-        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
+        commonMenubarAssets(self) # Standardised Menubar assets
 
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
@@ -362,26 +410,25 @@ class YoutubeWindow(QMainWindow):
     def __init__(self, mainWindow:QMainWindow | MainScreenWindow, parent=None):
         super(YoutubeWindow, self).__init__(parent)
         self.setGeometry(200, 200, 400, 200)
+        self.windowOnTopFlag = True
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.windowOnTopFlag) # Set to stay on top
         self.setWindowTitle("Music Player")
         appIcon = QIcon("./Resources/Splash_Screen_Logo.png")
         self.setWindowIcon(appIcon)
 
         self.windowHome = mainWindow
 
-        self.menuHome = self.menuBar().addMenu("Home")
-        self.menuYoutube = self.menuBar().addMenu("Youtube")
-        actionGoHome = self.menuHome.addAction("Go to Home")
-        actionGoPlaylists = self.menuHome.addAction("View Playlists")
-        actionGoOnline = self.menuYoutube.addAction("Search Online")
-        actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
-        actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
-        actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
+        commonMenubarAssets(self) # Standardised Menubar Assets
 
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
         # YouTube Song Search
         self.search_HorizontalLayout, _ = commonSearchBarAssets("Search YouTube...", self.searchSong, True)
-        widgetCentral.setLayout(self.search_HorizontalLayout)
+        self.download_HorizontalLayout, _ = commonSearchBarAssets("Link to Download...", self.downloadAudio, True)
+        layoutVertical = QVBoxLayout()
+        widgetCentral.setLayout(layoutVertical)
+        layoutVertical.addLayout(self.search_HorizontalLayout)
+        layoutVertical.addLayout(self.download_HorizontalLayout)
 
     def searchSong(self):
         # TODO:
@@ -392,6 +439,26 @@ class YoutubeWindow(QMainWindow):
             responseDict = youtube_search_logic(searchString)
             searchResultsTitle = [item["snippet"]["title"] for item in responseDict["items"]]
             print(searchResultsTitle)
+
+    def downloadAudio(self):
+        linkToDownloadString : str = self.download_HorizontalLayout.itemAt(0).widget().text()
+        if linkToDownloadString and not linkToDownloadString.isspace():
+            from yt_dlp import YoutubeDL
+            # "https://www.youtube.com/watch?v=FhhA5purigQ"
+            # To download straight to a file
+            print(f"Downloading {linkToDownloadString}...")
+            ydl_options = {"format":"bestaudio[ext=m4a]/bestaudio/best"}
+            with YoutubeDL(ydl_options) as ydl:
+                ydl.download([linkToDownloadString])
+            print("Download Done!...")
+
+    def windowOnTopFlagToggler(self):
+        import ctypes
+        import ctypes.wintypes
+        self.windowOnTopFlag = not self.windowOnTopFlag
+        hwnd = int(self.winId())
+        hwnd_insert = ctypes.wintypes.HWND(-1 if self.windowOnTopFlag else -2)
+        ctypes.windll.user32.SetWindowPos(hwnd, hwnd_insert, 0, 0, 0, 0, 3)
 
     def triggeredByAction(self, triggeringActionText:str):
         if "home" in triggeringActionText:
