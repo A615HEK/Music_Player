@@ -14,8 +14,11 @@ from backend_logic import youtube_search_logic
 # 2. Storing Playlists
 # 3. Click on playlists to view songs in it
 # 4. Click on play (or) on a song to start playing it instead of the current song & queue # Sort of done
-# 5. Toggle Always on top
 # * Ability to view queue and add songs to queue
+# NICE_TO_HAVES:
+# 1. Mini player interface
+# 2. Have Audio Visualiser
+# 3. Skin customizability
 
 # -----------------------------------------------------------------
 
@@ -441,24 +444,18 @@ class YoutubeWindow(QMainWindow):
             print(searchResultsTitle)
 
     def downloadAudio(self):
+        # TODO:
+        # 1. Change default download folder to MUSIC_PATH from .env
         linkToDownloadString : str = self.download_HorizontalLayout.itemAt(0).widget().text()
         if linkToDownloadString and not linkToDownloadString.isspace():
             from yt_dlp import YoutubeDL
-            # "https://www.youtube.com/watch?v=FhhA5purigQ"
+            # Test_URL = "https://www.youtube.com/watch?v=FhhA5purigQ"
             # To download straight to a file
-            print(f"Downloading {linkToDownloadString}...")
+            print(f"Downloading {linkToDownloadString} ...")
             ydl_options = {"format":"bestaudio[ext=m4a]/bestaudio/best"}
             with YoutubeDL(ydl_options) as ydl:
                 ydl.download([linkToDownloadString])
             print("Download Done!...")
-
-    def windowOnTopFlagToggler(self):
-        import ctypes
-        import ctypes.wintypes
-        self.windowOnTopFlag = not self.windowOnTopFlag
-        hwnd = int(self.winId())
-        hwnd_insert = ctypes.wintypes.HWND(-1 if self.windowOnTopFlag else -2)
-        ctypes.windll.user32.SetWindowPos(hwnd, hwnd_insert, 0, 0, 0, 0, 3)
 
     def triggeredByAction(self, triggeringActionText:str):
         if "home" in triggeringActionText:
