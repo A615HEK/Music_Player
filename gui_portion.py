@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
 from time_Calcer import Time_Values
-from backend_logic import youtube_search_logic
+from backend_logic import scan_and_return_songlist, youtube_search_logic
 
 # -----------------------------------------------------------------
 # * -> Meaning Priority
@@ -64,32 +64,31 @@ def windowOnTopFlagToggler(self:QMainWindow):
 
 # -----------------------------------------------------------------
 
-class Worker(QThread):
-    finished = Signal(str)
-    error = Signal(str)
+# class Worker(QThread):
+#     finished = Signal(str)
+#     error = Signal(str)
 
-    def __init__(self, url, method, data=None):
-        super().__init__()
-        self.url = url
-        self.method = method
-        self.data = data
+#     def __init__(self, method:str, data=None):
+#         super().__init__()
+#         # self.url = url
+#         # self.method = method
+#         self.data = data
+#         self.method = method
 
-    def run(self):
-        try:
-            if self.method == "GET":
-                response = requests.get(self.url)
-            # elif self.method == "POST":
-            #     response = requests.post(self.url, json=self.data)
-            else:
-                self.error.emit(f"Unsupported method: {self.method}")
-                return
-
-            response.raise_for_status() # Raise an exception for HTTP errors
-            self.finished.emit(response.text)
-        except requests.exceptions.RequestException as e:
-            self.error.emit(f"Request error: {e}")
-        except Exception as e:
-            self.error.emit(f"An unexpected error occurred: {e}")
+#     def run(self):
+#         try:
+#             # if self.method == "GET":
+#             #     response = requests.get(self.url)
+#             # elif self.method == "POST":
+#             #     response = requests.post(self.url, json=self.data)
+#             if self.method == "get_song_list":
+#                 response = scan_and_return_songlist()
+#                 self.finished.emit(response)
+#             else:
+#                 self.error.emit(f"Unsupported method: {self.method}")
+#             # response.raise_for_status() # Raise an exception for HTTP errors
+#         except Exception as e:
+#             self.error.emit(f"An unexpected error occurred: {e}")
 
 # -----------------------------------------------------------------
 
@@ -288,8 +287,8 @@ class MainScreenWindow(QMainWindow):
         self.hide()
         self.windowOnline.show()
 
-    def populateTable(self, detailsForTable):
-        self.detailsForTable = json.loads(detailsForTable)
+    def populateTable(self):
+        self.detailsForTable = scan_and_return_songlist()
         self.musicCount = len(self.detailsForTable)
         self.tableMusicDisplay.setRowCount(self.musicCount) # Dynamically update based on table size
         for (i,musicDetails) in self.detailsForTable.items():
@@ -316,18 +315,18 @@ class MainScreenWindow(QMainWindow):
         self.buttonPlay.setChecked(False)
         self.selectedAudioID = row
         if column != 3:
-            self.mediaPlayer.setSource(QUrl().fromLocalFile(self.detailsForTable[str(row)]["path"]))
+            self.mediaPlayer.setSource(QUrl().fromLocalFile(self.detailsForTable[row]["path"]))
             self.currentlyPlaying = row
             self.buttonPlay.click()
-        time_vals = list(map(int, map(str.strip, self.detailsForTable[str(row)]["duration"].split(":"))))
+        time_vals = list(map(int, map(str.strip, self.detailsForTable[row]["duration"].split(":"))))
         audio_time_in_secs = 0
         if len(time_vals)>3:
             audio_time_in_secs += time_vals[0]*86400
         audio_time_in_secs += sum(val*(60**(len(time_vals)-1-idx)) for idx, val in enumerate(time_vals[-3:]))
         self.sliderTime.setRange(0, audio_time_in_secs*1000)
-        self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[str(row)]["filename"])
+        self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[row]["filename"])
         self.widgetPlayer.layout().itemAt(2).widget().setText("0 : 00")
-        self.widgetPlayer.layout().itemAt(4).widget().setText(self.detailsForTable[str(row)]["duration"])
+        self.widgetPlayer.layout().itemAt(4).widget().setText(self.detailsForTable[row]["duration"])
 
     def buttonPlayPause(self):
         if self.buttonPlay.isChecked():
@@ -480,7 +479,8 @@ class AppWindows():
         self.app = QApplication(sys.argv)
         # self.windowSplashScreen = SplashScreenWindow() # ---Undo Comment---
         self.windowMainScreen = MainScreenWindow()
-        self.getDetails()
+        # self.getDetails()
+        self.windowMainScreen.populateTable()
         # self.windowSplashScreen.delayForSometime(0.1) # ---Undo Comment---
         self.windowMainScreen.show()
         # self.windowSplashScreen.finish(self.windowMainScreen) #---Undo Comment---
@@ -488,12 +488,11 @@ class AppWindows():
         # self.app.setStyleSheet(Path("./Resources/styleSheet.qss").read_text())
         sys.exit(self.app.exec())
 
-    def getDetails(self):
-        url = "http://127.0.0.1:8000/"
-        self.worker = Worker(url, "GET")
-        self.worker.start()
-        self.worker.finished.connect(self.windowMainScreen.populateTable)
-        self.worker.error.connect(self.windowMainScreen.handleError)
+    # def getDetails(self):
+        # self.worker = Worker("get_song_list")
+        # self.worker.start()
+        # self.worker.finished.connect(self.windowMainScreen.populateTable)
+        # self.worker.error.connect(self.windowMainScreen.handleError)
 
 # -----------------------------------------------------------------
 
