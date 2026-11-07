@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
 from time_Calcer import Time_Values
-from backend_logic import scan_and_return_songlist, youtube_search_logic
+from backend_logic import scan_and_return_songlist, youtube_search_logic, new_playlist, edit_playlist
 
 # -----------------------------------------------------------------
 # * -> Meaning Priority
@@ -123,6 +123,7 @@ class MoreOptionsPopup(QWidget):
         self.layoutVertical = QVBoxLayout()
         self.setLayout(self.layoutVertical)
         self.buttonMA_AddToPlaylist = QPushButton("Add To Playlist")
+        
         self.buttonMA_AddToQueue = QPushButton("Add To Queue")
         # self.buttonMA_EditTags = QPushButton("Edit Tags")
         # self.buttonMA_AddToFav = QPushButton("Add To Favourites")
@@ -132,6 +133,12 @@ class MoreOptionsPopup(QWidget):
         self.buttonMA_AddToQueue.clicked.connect(lambda: self.AddToPlaylist(songName))
 
     def AddToPlaylist(self, songName:str, playlistName:str = "Queue"):
+        # TODO:
+        # 1. Display list of existing playlists to add song to
+        if playlistName == "Default_Playlist":
+            # Option to create a new playlist
+            # Option to add to existing playlists
+            pass
         print(f"Add to {playlistName} -> {songName}")
         self.close()
 
