@@ -43,21 +43,24 @@ def commonMenubarAssets(self:QMainWindow):
     self.menuHome = self.menuBar().addMenu("Home")
     self.menuYoutube = self.menuBar().addMenu("Youtube")
     self.menuOptions = self.menuBar().addMenu("Options")
+    self.toggleText = "On"
 
-    actionGoHome = self.menuHome.addAction("Go to Home")
-    actionGoPlaylists = self.menuHome.addAction("View Playlists")
-    actionGoOnline = self.menuYoutube.addAction("Search Online")
-    actionToggleOnTop = self.menuOptions.addAction("Toggle Anchor")
+    self.actionGoHome = self.menuHome.addAction("Go to Home")
+    self.actionGoPlaylists = self.menuHome.addAction("View Playlists")
+    self.actionGoOnline = self.menuYoutube.addAction("Search Online")
+    self.actionToggleOnTop = self.menuOptions.addAction(f"Toggle Anchor - {self.toggleText}")
 
-    actionGoHome.triggered.connect(lambda: self.triggeredByAction(actionGoHome.text().lower()))
-    actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(actionGoPlaylists.text().lower()))
-    actionGoOnline.triggered.connect(lambda: self.triggeredByAction(actionGoOnline.text().lower()))
-    actionToggleOnTop.triggered.connect(lambda: windowOnTopFlagToggler(self))
+    self.actionGoHome.triggered.connect(lambda: self.triggeredByAction(self.actionGoHome.text().lower()))
+    self.actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(self.actionGoPlaylists.text().lower()))
+    self.actionGoOnline.triggered.connect(lambda: self.triggeredByAction(self.actionGoOnline.text().lower()))
+    self.actionToggleOnTop.triggered.connect(lambda: windowOnTopFlagToggler(self))
 
 def windowOnTopFlagToggler(self:QMainWindow):
     import ctypes
     import ctypes.wintypes
     self.windowOnTopFlag = not self.windowOnTopFlag
+    self.toggleText = "On" if self.windowOnTopFlag else "Off"
+    self.actionToggleOnTop.setText(f"Toggle Anchor - {self.toggleText}")
     hwnd = int(self.winId())
     hwnd_insert = ctypes.wintypes.HWND(-1 if self.windowOnTopFlag else -2)
     ctypes.windll.user32.SetWindowPos(hwnd, hwnd_insert, 0, 0, 0, 0, 3)
@@ -116,21 +119,52 @@ class SplashScreenWindow(QSplashScreen):
 # -----------------------------------------------------------------
 
 class MoreOptionsPopup(QWidget):
-    def __init__(self, songName:str, parent=None):
+    def __init__(self, songDetails:dict, parent=None):
         super(MoreOptionsPopup, self).__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.layoutVertical = QVBoxLayout()
         self.setLayout(self.layoutVertical)
         self.buttonMA_AddToPlaylist = QPushButton("Add To Playlist")
-        
+        self.buttonMA_NewPlaylist = QPushButton("New Playlist")
         self.buttonMA_AddToQueue = QPushButton("Add To Queue")
+
+        songName = songDetails["fileName"]
+
+        self.layoutHorizontal_NewPlaylist = QHBoxLayout()
+        self.lineEditMA_PlaylistName = QLineEdit(placeholderText="Playlist Name...")
+        self.buttonMA_Done = QPushButton("Done")
+        self.layoutVertical.addWidget(self.lineEditMA_PlaylistName)
+        self.layoutVertical.addWidget(self.buttonMA_Done)
+
         # self.buttonMA_EditTags = QPushButton("Edit Tags")
         # self.buttonMA_AddToFav = QPushButton("Add To Favourites")
         self.layoutVertical.addWidget(self.buttonMA_AddToPlaylist)
+        self.layoutVertical.addWidget(self.buttonMA_NewPlaylist)
+        self.layoutVertical.addLayout(self.layoutHorizontal_NewPlaylist)
         self.layoutVertical.addWidget(self.buttonMA_AddToQueue)
         self.buttonMA_AddToPlaylist.clicked.connect(lambda: self.AddToPlaylist(songName, "Default_Playlist"))
         self.buttonMA_AddToQueue.clicked.connect(lambda: self.AddToPlaylist(songName))
+        
+        self.buttonMA_NewPlaylist.clicked.connect(self.showNewPlaylist)
+        self.buttonMA_Done.clicked.connect(lambda: self.createNewPlaylist(songDetails))
+
+        self.lineEditMA_PlaylistName.hide()
+        self.buttonMA_Done.hide()
+        self.buttonMA_Done.setChecked(False)
+
+    def createNewPlaylist(self, songDetails:dict):
+        edit_playlist(self.lineEditMA_PlaylistName.text(), "ADD_SONGS", songDetails)
+        self.lineEditMA_PlaylistName.hide()
+        self.buttonMA_Done.hide()
+        self.buttonMA_Done.setChecked(False)
+        self.close()
+
+    def showNewPlaylist(self):
+        self.lineEditMA_PlaylistName.show()
+        self.buttonMA_Done.show()
+        self.lineEditMA_PlaylistName.setFocus()
+        self.buttonMA_Done.setChecked(False)
 
     def AddToPlaylist(self, songName:str, playlistName:str = "Queue"):
         # TODO:
@@ -302,7 +336,7 @@ class MainScreenWindow(QMainWindow):
             buttonMoreActions = QPushButton("...")
             buttonMoreActions.setProperty("row_idx", i)
             buttonMoreActions.clicked.connect(self.moreActionsClicked)
-            self.tableMusicDisplay.setItem(int(i), 1, QTableWidgetItem(musicDetails["filename"]))
+            self.tableMusicDisplay.setItem(int(i), 1, QTableWidgetItem(musicDetails["fileName"]))
             self.tableMusicDisplay.setItem(int(i), 2, QTableWidgetItem(musicDetails["duration"]))
             self.tableMusicDisplay.setCellWidget(int(i), 3, buttonMoreActions)
             self.tableMusicDisplay.setRowHeight(int(i), 60)
@@ -313,8 +347,8 @@ class MainScreenWindow(QMainWindow):
 
     def moreActionsClicked(self):
         clicked_RowID = self.sender().property("row_idx")
-        songName = self.detailsForTable[clicked_RowID]["filename"]
-        MA_Popup = MoreOptionsPopup(songName)
+        songDetails = self.detailsForTable[clicked_RowID]
+        MA_Popup = MoreOptionsPopup(songDetails)
         MA_Pos = self.sender().mapToGlobal(QPoint(0, self.sender().height()))
         MA_Popup.displayPopup(MA_Pos)
 
@@ -331,8 +365,8 @@ class MainScreenWindow(QMainWindow):
             audio_time_in_secs += time_vals[0]*86400
         audio_time_in_secs += sum(val*(60**(len(time_vals)-1-idx)) for idx, val in enumerate(time_vals[-3:]))
         self.sliderTime.setRange(0, audio_time_in_secs*1000)
-        self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[row]["filename"])
-        self.widgetPlayer.layout().itemAt(2).widget().setText("0 : 00")
+        self.widgetPlayer.layout().itemAt(0).widget().setText(self.detailsForTable[row]["fileName"])
+        self.widgetPlayer.layout().itemAt(2).widget().setText("0 : 00") # TODO: Nice to haves (Non-Essential): Change dynamically based on length of audio as in -> 0:00 or 0:00:00 or 0:00:00:00
         self.widgetPlayer.layout().itemAt(4).widget().setText(self.detailsForTable[row]["duration"])
 
     def buttonPlayPause(self):
