@@ -5,15 +5,13 @@ from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
 from time_Calcer import Time_Values
-from backend_logic import scan_and_return_songlist, youtube_search_logic, new_playlist, edit_playlist
+from backend_logic import scan_and_return_songlist, youtube_search_logic, edit_playlist, list_playlists
 
 # -----------------------------------------------------------------
 # * -> Meaning Priority
 # TODO:
-# 1. Display list of available Playlists + New Playlist creation (within "Add to playlist" in "More Actions")
-# 2. Storing Playlists
-# 3. Click on playlists to view songs in it
-# 4. Click on play (or) on a song to start playing it instead of the current song & queue # Sort of done
+# 1. Display list of available Playlists
+# 2. Click on playlists to view songs in it
 # * Ability to view queue and add songs to queue
 # NICE_TO_HAVES:
 # 1. Mini player interface
@@ -197,7 +195,7 @@ class MainScreenWindow(QMainWindow):
         self.tableMusicDisplay.setRowCount(self.musicCount)
         self.tableMusicDisplay.setColumnCount(4)
         self.tableMusicDisplay.setShowGrid(False)
-        self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Music Name", "Duration", "More Actions"]) # Only for debug
+        self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Audio Name", "Duration", "More Actions"]) # Only for debug
 
         for i in range(self.tableMusicDisplay.columnCount()):
             self.tableMusicDisplay.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
@@ -244,12 +242,12 @@ class MainScreenWindow(QMainWindow):
         self.volumeButton = QPushButton("Volume")
         self.volumeButton.clicked.connect(self.displayVolumeSlider)
 
-        layoutPlayer.addWidget(QLabel()) # Name of the song/music
+        layoutPlayer.addWidget(QLabel()) # Name of the song/music/audio
         # layoutPlayer.addStretch()
         layoutPlayer.addWidget(self.volumeButton) # Volume control Button (Hidden - Volume control Slider )
         layoutPlayer.addWidget(QLabel()) # Current timestamp
         layoutPlayer.addWidget(self.sliderTime) # Time control Slider
-        layoutPlayer.addWidget(QLabel()) # Duration of the song/music
+        layoutPlayer.addWidget(QLabel()) # Duration of the song/music/audio
         layoutPlayer.addWidget(self.buttonPlay) # Play/Pause button
 
         layoutVertical.addLayout(self.search_HorizontalLayout)
@@ -429,8 +427,41 @@ class PlaylistsWindow(QMainWindow):
         self.setCentralWidget(widgetCentral)
         layoutHorizontal = QHBoxLayout()
         widgetCentral.setLayout(layoutHorizontal)
-        self.buttonSearch = QPushButton("Default Playlist 1")
-        layoutHorizontal.addWidget(self.buttonSearch)
+        
+        # CONTINUE:
+        # self.tableMusicDisplay = QTableWidget()
+        # self.tableMusicDisplay.setRowCount(self.musicCount)
+        # self.tableMusicDisplay.setColumnCount(4)
+        # self.tableMusicDisplay.setShowGrid(False)
+        # self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Audio Name", "Duration", "More Actions"]) # Only for debug
+
+        # for i in range(self.tableMusicDisplay.columnCount()):
+        #     self.tableMusicDisplay.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+        #     if i!=self.tableMusicDisplay.columnCount()-1:
+        #         self.tableMusicDisplay.setEditTriggers(self.tableMusicDisplay.EditTrigger.NoEditTriggers)
+
+        self.populate_playlists()
+        # self.buttonSearch = QPushButton("Default Playlist 1")
+        # layoutHorizontal.addWidget(self.buttonSearch)
+
+    def populate_playlists(self):
+        allPlaylists = list_playlists()
+        for i,playlistInfo in allPlaylists.items():
+            playlistInfo["playlistName"]
+        
+        # CONTINUE:
+        # self.musicCount = len(self.detailsForTable)
+        # self.tableMusicDisplay.setRowCount(self.musicCount) # Dynamically update based on table size
+        # for (i,musicDetails) in self.detailsForTable.items():
+        #     buttonMoreActions = QPushButton("...")
+        #     buttonMoreActions.setProperty("row_idx", i)
+        #     buttonMoreActions.clicked.connect(self.moreActionsClicked)
+        #     self.tableMusicDisplay.setItem(int(i), 1, QTableWidgetItem(musicDetails["fileName"]))
+        #     self.tableMusicDisplay.setItem(int(i), 2, QTableWidgetItem(musicDetails["duration"]))
+        #     self.tableMusicDisplay.setCellWidget(int(i), 3, buttonMoreActions)
+        #     self.tableMusicDisplay.setRowHeight(int(i), 60)
+        #     if i==self.musicCount-1:
+        #         break
 
     def triggeredByAction(self, triggeringActionText:str):
         if "home" in triggeringActionText:

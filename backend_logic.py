@@ -5,12 +5,14 @@ from dotenv import load_dotenv
 from googleapiclient.discovery import build
 load_dotenv()
 
-music_path = getenv("MUSIC_PATH")
+# Global variables
+audioPath = getenv("audioPath")
+playlistPath = getenv("playlistPath")
 
 def scan_and_return_songlist():
     songs = {}
-    for i, song in enumerate(listdir(music_path)):
-        audio = TinyTag.get(path.join(music_path, song))
+    for i, song in enumerate(listdir(audioPath)):
+        audio = TinyTag.get(path.join(audioPath, song))
         songs[i] = {
             "fileName":song,
             "duration":Time_Values(audio.duration.__floor__()).__repr__(),
@@ -20,8 +22,22 @@ def scan_and_return_songlist():
 
 # --- Playlist Logic ---
 
+def list_playlists():
+    playlists = {}
+    for i, playlistFile in enumerate(listdir(playlistPath)):
+        # CONTINUE:
+        # playlistFilePath = (playlistPath+"/"+playlistFile)
+        # with open(playlistFilePath) as p:
+            # playlistContents = p.readlines()
+            # playlistAudioPaths = playlistContents[2::2]
+        playlists[i] = {
+            "playlistName":playlistFile[:-5], # Slicing away .m3u8
+            # "audioPaths":playlistAudioPaths
+            }
+    return playlists
+
 def new_playlist(playlistName:str):
-    pName = playlistName+".m3u8"
+    pName = playlistPath+playlistName+".m3u8"
     if not path.exists(pName):
         # create a new playlist
         with open(pName, "w") as f:
@@ -49,7 +65,7 @@ def edit_playlist(playlistName:str, operationToDo:str, songDetails:dict):
         print(f"Error: Non-existent operation; Operation: {operationToDo} is unsupported!...")
         return
     # Only runs if playlist name exists and operation is supported
-    pName = playlistName+".m3u8"
+    pName = playlistPath+playlistName+".m3u8"
     # Check if playlist exists: If False and Songs to be added -> Create Playlist; Else -> Error
     if not path.exists(pName):
         if operationToDo == "ADD_SONGS":
@@ -79,7 +95,7 @@ def edit_playlist(playlistName:str, operationToDo:str, songDetails:dict):
     #     pass
 
 def delete_playlist(playlistName:str):
-    pName = playlistName+".m3u8"
+    pName = playlistPath+playlistName+".m3u8"
     if path.exists(pName):
         remove(pName)
     else:
