@@ -10,8 +10,7 @@ from backend_logic import scan_and_return_songlist, youtube_search_logic, edit_p
 # -----------------------------------------------------------------
 # * -> Meaning Priority
 # TODO:
-# 1. Display list of available Playlists
-# 2. Click on playlists to view songs in it
+# 1. Click on playlists to view songs in it
 # * Ability to view queue and add songs to queue
 # NICE_TO_HAVES:
 # 1. Mini player interface
@@ -48,9 +47,9 @@ def commonMenubarAssets(self:QMainWindow):
     self.actionGoOnline = self.menuYoutube.addAction("Search Online")
     self.actionToggleOnTop = self.menuOptions.addAction(f"Toggle Anchor - {self.toggleText}")
 
-    self.actionGoHome.triggered.connect(lambda: self.triggeredByAction(self.actionGoHome.text().lower()))
-    self.actionGoPlaylists.triggered.connect(lambda: self.triggeredByAction(self.actionGoPlaylists.text().lower()))
-    self.actionGoOnline.triggered.connect(lambda: self.triggeredByAction(self.actionGoOnline.text().lower()))
+    self.actionGoHome.triggered.connect(lambda: triggeredByAction(self, self.actionGoHome.text().lower()))
+    self.actionGoPlaylists.triggered.connect(lambda: triggeredByAction(self, self.actionGoPlaylists.text().lower()))
+    self.actionGoOnline.triggered.connect(lambda: triggeredByAction(self, self.actionGoOnline.text().lower()))
     self.actionToggleOnTop.triggered.connect(lambda: windowOnTopFlagToggler(self))
 
 def windowOnTopFlagToggler(self:QMainWindow):
@@ -62,6 +61,41 @@ def windowOnTopFlagToggler(self:QMainWindow):
     hwnd = int(self.winId())
     hwnd_insert = ctypes.wintypes.HWND(-1 if self.windowOnTopFlag else -2)
     ctypes.windll.user32.SetWindowPos(hwnd, hwnd_insert, 0, 0, 0, 0, 3)
+
+def triggeredByAction(self:QMainWindow, triggeringActionText:str):
+    if "home" in triggeringActionText:
+        # Check if calling window is home -> True: Ignore and Return, False: Continue fn
+        if self.windowName == "MainScreenWindow":
+            return
+        if self.windowHome:
+            print("Go to Home")
+            self.hide()
+            self.windowHome.show()
+            self.destroy()
+    elif "playlist" in triggeringActionText:
+        # Check if calling window is playlist -> True: Ignore and Return, False: Continue fn
+        if self.windowName == "PlaylistWindow":
+            return
+        print("Viewing Playlists")
+        if self.windowName == "MainScreenWindow":
+            self.showPlaylistsWindow()
+        else:
+            self.hide()
+            self.windowHome.showPlaylistsWindow()
+            self.destroy()
+    elif "online" in triggeringActionText:
+        # Check if calling window is youtube -> True: Ignore and Return, False: Continue fn
+        if self.windowName == "YoutubeWindow":
+            return
+        print("Search Online")
+        if self.windowName == "MainScreenWindow":
+            self.showOnlineWindow()
+        else:
+            self.hide()
+            self.windowHome.showOnlineWindow()
+            self.destroy()
+    else:
+        pass
 
 # -----------------------------------------------------------------
 
@@ -272,6 +306,8 @@ class MainScreenWindow(QMainWindow):
         volumeSliderWidget_layoutVertical.addWidget(self.volumeSlider)
         self.volumeSliderWidget.setVisible(False)
 
+        self.windowName = "MainScreenWindow"
+
     def displayVolumeSlider(self):
         if self.volumeSliderWidget.isVisible():
             self.volumeSliderWidget.setVisible(False)
@@ -280,15 +316,15 @@ class MainScreenWindow(QMainWindow):
             self.volumeSliderWidget.move(parentPos)
             self.volumeSliderWidget.setVisible(True)
 
-    def triggeredByAction(self, triggeringActionText:str):
-        if "online" in triggeringActionText:
-            print("Search Online")
-            self.showOnlineWindow()
-        elif "playlist" in triggeringActionText:
-            print("Viewing Playlists")
-            self.showPlaylistsWindow()
-        else:
-            pass
+    # def triggeredByAction(self, triggeringActionText:str):
+    #     if "online" in triggeringActionText:
+    #         print("Search Online")
+    #         self.showOnlineWindow()
+    #     elif "playlist" in triggeringActionText:
+    #         print("Viewing Playlists")
+    #         self.showPlaylistsWindow()
+    #     else:
+    #         pass
 
     def extraVolumeControl(self):
         # Function to control audio volume for extra finesse
@@ -425,58 +461,50 @@ class PlaylistsWindow(QMainWindow):
 
         widgetCentral = QWidget()
         self.setCentralWidget(widgetCentral)
-        layoutHorizontal = QHBoxLayout()
-        widgetCentral.setLayout(layoutHorizontal)
-        
-        # CONTINUE:
-        # self.tableMusicDisplay = QTableWidget()
-        # self.tableMusicDisplay.setRowCount(self.musicCount)
-        # self.tableMusicDisplay.setColumnCount(4)
-        # self.tableMusicDisplay.setShowGrid(False)
-        # self.tableMusicDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Audio Name", "Duration", "More Actions"]) # Only for debug
+        layoutVertical = QVBoxLayout()
+        widgetCentral.setLayout(layoutVertical)
 
-        # for i in range(self.tableMusicDisplay.columnCount()):
-        #     self.tableMusicDisplay.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
-        #     if i!=self.tableMusicDisplay.columnCount()-1:
-        #         self.tableMusicDisplay.setEditTriggers(self.tableMusicDisplay.EditTrigger.NoEditTriggers)
+        self.tablePlaylistDisplay = QTableWidget()
+        self.tablePlaylistDisplay.setRowCount(1)
+        self.tablePlaylistDisplay.setColumnCount(5)
+        self.tablePlaylistDisplay.setShowGrid(False)
+        self.tablePlaylistDisplay.setHorizontalHeaderLabels(["Photo placeholder", "Playlist Name", "Duration", "Songs", "More Actions"]) # Only for debug
+
+        for i in range(self.tablePlaylistDisplay.columnCount()):
+            self.tablePlaylistDisplay.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+            if i!=self.tablePlaylistDisplay.columnCount()-1:
+                self.tablePlaylistDisplay.setEditTriggers(self.tablePlaylistDisplay.EditTrigger.NoEditTriggers)
+
+        layoutVertical.addWidget(self.tablePlaylistDisplay)
 
         self.populate_playlists()
-        # self.buttonSearch = QPushButton("Default Playlist 1")
-        # layoutHorizontal.addWidget(self.buttonSearch)
+        self.windowName = "PlaylistWindow"
 
     def populate_playlists(self):
-        allPlaylists = list_playlists()
-        for i,playlistInfo in allPlaylists.items():
-            playlistInfo["playlistName"]
-        
-        # CONTINUE:
-        # self.musicCount = len(self.detailsForTable)
-        # self.tableMusicDisplay.setRowCount(self.musicCount) # Dynamically update based on table size
-        # for (i,musicDetails) in self.detailsForTable.items():
-        #     buttonMoreActions = QPushButton("...")
-        #     buttonMoreActions.setProperty("row_idx", i)
-        #     buttonMoreActions.clicked.connect(self.moreActionsClicked)
-        #     self.tableMusicDisplay.setItem(int(i), 1, QTableWidgetItem(musicDetails["fileName"]))
-        #     self.tableMusicDisplay.setItem(int(i), 2, QTableWidgetItem(musicDetails["duration"]))
-        #     self.tableMusicDisplay.setCellWidget(int(i), 3, buttonMoreActions)
-        #     self.tableMusicDisplay.setRowHeight(int(i), 60)
-        #     if i==self.musicCount-1:
-        #         break
+        self.detailsForTable = list_playlists()
+        self.playlistCount = len(self.detailsForTable)
+        self.tablePlaylistDisplay.setRowCount(self.playlistCount) # Dynamically update based on table size
+        for (i,playlistInfo) in self.detailsForTable.items():
+            buttonMoreActions = QPushButton("...")
+            buttonMoreActions.setProperty("row_idx", i)
+            buttonMoreActions.clicked.connect(self.moreActionsClicked)
+            self.tablePlaylistDisplay.setItem(int(i), 1, QTableWidgetItem(playlistInfo["playlistName"]))
+            self.tablePlaylistDisplay.setItem(int(i), 2, QTableWidgetItem(playlistInfo["duration"]))
+            self.tablePlaylistDisplay.setItem(int(i), 3, QTableWidgetItem(len(playlistInfo["audioPaths"])))
+            self.tablePlaylistDisplay.setCellWidget(int(i), 4, buttonMoreActions)
+            self.tablePlaylistDisplay.setRowHeight(int(i), 60)
+            if i==self.playlistCount-1:
+                break
 
-    def triggeredByAction(self, triggeringActionText:str):
-        if "home" in triggeringActionText:
-            print("Go to Home")
-            self.hide()
-            if self.windowHome:
-                self.windowHome.show()
-                self.destroy()
-        elif "online" in triggeringActionText:
-            print("Search Online")
-            self.hide()
-            self.windowHome.showOnlineWindow()
-            self.destroy()
-        else:
-            pass
+    def moreActionsClicked(self):
+        # Popup w/ options -> Edit Playlist, Delete Playlist
+        clicked_RowID = self.sender().property("row_idx")
+        playlistDetails = self.detailsForTable[clicked_RowID]
+        # # MA_Popup = MoreOptionsPopup(songDetails)
+        # MA_Pos = self.sender().mapToGlobal(QPoint(0, self.sender().height()))
+        # # MA_Popup.displayPopup(MA_Pos)
+        print(playlistDetails)
+        return
 
 # -----------------------------------------------------------------
 
@@ -503,6 +531,7 @@ class YoutubeWindow(QMainWindow):
         widgetCentral.setLayout(layoutVertical)
         layoutVertical.addLayout(self.search_HorizontalLayout)
         layoutVertical.addLayout(self.download_HorizontalLayout)
+        self.windowName = "YoutubeWindow"
 
     def searchSong(self):
         # TODO:
@@ -527,21 +556,6 @@ class YoutubeWindow(QMainWindow):
             with YoutubeDL(ydl_options) as ydl:
                 ydl.download([linkToDownloadString])
             print("Download Done!...")
-
-    def triggeredByAction(self, triggeringActionText:str):
-        if "home" in triggeringActionText:
-            print("Go to Home")
-            self.hide()
-            if self.windowHome:
-                self.windowHome.show()
-                self.destroy()
-        elif "playlist" in triggeringActionText:
-            print("Viewing Playlists")
-            self.hide()
-            self.windowHome.showPlaylistsWindow()
-            self.destroy()
-        else:
-            pass
 
 # -----------------------------------------------------------------
 

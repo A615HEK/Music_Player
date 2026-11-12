@@ -6,8 +6,8 @@ from googleapiclient.discovery import build
 load_dotenv()
 
 # Global variables
-audioPath = getenv("audioPath")
-playlistPath = getenv("playlistPath")
+audioPath = getenv("AUDIO_PATH")
+playlistPath = getenv("PLAYLIST_PATH")
 
 def scan_and_return_songlist():
     songs = {}
@@ -26,13 +26,14 @@ def list_playlists():
     playlists = {}
     for i, playlistFile in enumerate(listdir(playlistPath)):
         # CONTINUE:
-        # playlistFilePath = (playlistPath+"/"+playlistFile)
-        # with open(playlistFilePath) as p:
-            # playlistContents = p.readlines()
-            # playlistAudioPaths = playlistContents[2::2]
+        playlistFilePath = (playlistPath+"/"+playlistFile)
+        with open(playlistFilePath) as p:
+            playlistContents = p.readlines()
+            playlistAudioPaths = playlistContents[2::2]
         playlists[i] = {
             "playlistName":playlistFile[:-5], # Slicing away .m3u8
-            # "audioPaths":playlistAudioPaths
+            "audioPaths":playlistAudioPaths,
+            "duration":Time_Values(100).__repr__()
             }
     return playlists
 
