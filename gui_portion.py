@@ -5,12 +5,13 @@ from PySide6.QtCore import Qt, QThread, Signal, QUrl, QPoint
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from time import sleep
 from time_Calcer import Time_Values
-from backend_logic import scan_and_return_songlist, youtube_search_logic, edit_playlist, list_playlists
+from backend_logic import scan_and_return_songlist, youtube_search_logic, edit_playlist, list_playlists, youtube_download_logic
 
 # -----------------------------------------------------------------
 # * -> Meaning Priority
 # TODO:
 # 1. Click on playlists to view songs in it
+# 2. UI to indicate after successful download completion
 # * Ability to view queue and add songs to queue
 # NICE_TO_HAVES:
 # 1. Mini player interface
@@ -544,18 +545,9 @@ class YoutubeWindow(QMainWindow):
             print(searchResultsTitle)
 
     def downloadAudio(self):
-        # TODO:
-        # 1. Change default download folder to MUSIC_PATH from .env
         linkToDownloadString : str = self.download_HorizontalLayout.itemAt(0).widget().text()
         if linkToDownloadString and not linkToDownloadString.isspace():
-            from yt_dlp import YoutubeDL
-            # Test_URL = "https://www.youtube.com/watch?v=FhhA5purigQ"
-            # To download straight to a file
-            print(f"Downloading {linkToDownloadString} ...")
-            ydl_options = {"format":"bestaudio[ext=m4a]/bestaudio/best"}
-            with YoutubeDL(ydl_options) as ydl:
-                ydl.download([linkToDownloadString])
-            print("Download Done!...")
+            youtube_download_logic(linkToDownloadString)
 
 # -----------------------------------------------------------------
 

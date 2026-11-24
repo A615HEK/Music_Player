@@ -8,6 +8,7 @@ load_dotenv()
 # Global variables
 audioPath = getenv("AUDIO_PATH")
 playlistPath = getenv("PLAYLIST_PATH")
+downloadPath = getenv("PLAYLIST_PATH")
 
 def scan_and_return_songlist():
     songs = {}
@@ -111,3 +112,16 @@ def youtube_search_logic(searchString : str) -> dict:
     results = YouTubeService.search().list(part="snippet", q=searchString)
     responseDict = results.execute()
     return responseDict
+
+def youtube_download_logic(linkToDownloadString):
+    from yt_dlp import YoutubeDL
+    # Test_URL = "https://www.youtube.com/watch?v=FhhA5purigQ"
+    # To download straight to a file
+    print(f"Downloading {linkToDownloadString} ...")
+    ydl_options = {
+        "format":"bestaudio[ext=m4a]/bestaudio/best",
+        "paths": {"home": downloadPath},
+        }
+    with YoutubeDL(ydl_options) as ydl:
+        ydl.download([linkToDownloadString])
+    print("Download Done!...")
